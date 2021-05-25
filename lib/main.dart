@@ -23,19 +23,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePage extends State<HomePage> {
-  final _items = <String>[];
+  final _listItems = <String>[];
 
   Widget _buildList() {
-    return ListView.builder(
-      itemBuilder: (context, i) {
-        if (i.isOdd) return Divider(height: 0);
-
-        final index = i ~/ 2;
-        if (index >= _items.length) {
-          _items.add('Título $index');
-        }
-        return _buildTile(_items[index]);
-      }
+    return ListView.separated(
+      itemBuilder: (context, index) => _buildTile(_listItems[index]),
+      separatorBuilder: (context, index) => Divider(height: 0),
+      itemCount: _listItems.length,
     );
   }
 
@@ -65,7 +59,11 @@ class _HomePage extends State<HomePage> {
       body: _buildList(),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
-        onPressed: () => null,
+        onPressed: () {
+          int index = _listItems.length;
+          _listItems.add('Título $index');
+          setState(() {});
+        }
       ),
     );
   }
