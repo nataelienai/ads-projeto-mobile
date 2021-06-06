@@ -8,7 +8,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: Colors.white,
+        primaryColor: Colors.deepPurple,
+        
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ButtonStyle(
             backgroundColor: MaterialStateProperty.all(Colors.deepPurple)
@@ -29,7 +30,8 @@ class MyApp extends StatelessWidget {
             borderSide: BorderSide(color: Colors.deepPurple, width: 2.0),
           ),
           errorStyle: TextStyle(fontSize: 14.0)
-        )
+        ),
+        accentColor: Colors.deepPurpleAccent[200]
       ),
       title: 'Rotineira',
       home: new ItemsList(title: 'Rotineira'),
@@ -48,9 +50,53 @@ class ItemsList extends StatefulWidget {
 
 class _ItemsList extends State<ItemsList> {
   final _listItems = [];
+  final _selectedIndex = [];
 
   @override
   Widget build(BuildContext context) {
+    if (_listItems.length > 0) {
+      return _initList();
+    } else {
+      return _initNoList();
+    }
+  }
+
+  Widget _initNoList() {
+    return Scaffold(
+      appBar: AppBar (
+        title: Text(widget.title),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            RawMaterialButton(
+              onPressed: _manageListItem,
+              elevation: 5.0,
+              fillColor: Colors.deepPurple,
+              child: Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 34.0,
+              ),
+              padding: EdgeInsets.all(18.0),
+              shape: CircleBorder(),
+            ),
+            const SizedBox(height: 15.0),
+            Text(
+              'Pressione o botão para adicionar eventos',
+              style: TextStyle(
+                color: Color(0xFFAAAAAA),
+                fontSize: 17,
+              )
+            )
+          ],
+      )
+    ));
+  }
+
+  Widget _initList() {
     return Scaffold(
       appBar: AppBar (
         title: Text(widget.title),
@@ -58,8 +104,8 @@ class _ItemsList extends State<ItemsList> {
       ),
       body: _buildList(),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: _addListItem,
+        child: Icon(_selectedIndex.isEmpty ? Icons.add : Icons.remove),
+        onPressed: _selectedIndex.isEmpty ? _manageListItem : _removeSelectedItems,
       ),
     );
   }
@@ -67,21 +113,41 @@ class _ItemsList extends State<ItemsList> {
   Widget _buildList() {
     return ListView.separated(
       itemBuilder: (context, index) => 
-        _buildTile(_listItems[index][0], _listItems[index][1]),
+        _buildTile(_listItems[index][0], _listItems[index][1], index),
       separatorBuilder: (context, index) => Divider(height: 0, thickness: 0),
       itemCount: _listItems.length,
     );
   }
 
-  Widget _buildTile(String itemTitle, String itemDescription) {
-    var titleStyle = TextStyle(fontSize: 18.0);
-    var descriptionStyle = TextStyle(fontSize: 14.0);
+  Widget _buildTile(String itemTitle, String itemDescription, int index) {
+    TextStyle titleStyle = TextStyle(fontSize: 18.0);
+    TextStyle descriptionStyle = TextStyle(fontSize: 14.0);
+    bool selected = _selectedIndex.contains(index);
     
     if (itemDescription.isEmpty) {
       itemDescription = 'Sem descrição';
       descriptionStyle = TextStyle(fontSize: 14.0, fontStyle: FontStyle.italic);
     }
+    
     return ListTile(
+      horizontalTitleGap: 4,
+      leading: Container(
+        height: double.infinity,
+        child: IconButton(
+          splashRadius: 25,
+          icon: Icon(selected ? Icons.check_circle : Icons.circle_outlined),
+          color: selected ? Colors.deepPurple : null,
+          onPressed: () {
+            setState(() {
+              if (selected) {
+                _selectedIndex.remove(index);
+              } else {
+                _selectedIndex.add(index);
+              }
+            });
+          }
+        )
+      ),
       title: Text(
         itemTitle, 
         style: titleStyle,
@@ -90,27 +156,44 @@ class _ItemsList extends State<ItemsList> {
         itemDescription,
         style: descriptionStyle,
       ),
-      onTap: () => null,
-      trailing: Container(
-        height: double.infinity,
-        child: Icon(Icons.arrow_forward_ios, size: 18)
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      onTap: () => _manageListItem(index: index),
+      contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
     );
   }
 
-  void _addListItem() {
+  void _manageListItem({int index}) {
     final _formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
+    Text title;
+    Function action;
+
+    if (index == null) {
+      title = Text('Adicionando evento');
+      action = () {
+        _listItems.add([titleController.text, descriptionController.text]);
+      };
+    } else {
+      title = Text('Modificando evento');
+      action = () {
+        _listItems[index][0] = titleController.text;
+        _listItems[index][1] = descriptionController.text;
+      };
+      titleController.text = _listItems[index][0];
+      descriptionController.text = _listItems[index][1];
+    }
 
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (BuildContext context) {
           return Scaffold(
             appBar: AppBar(
-              title: Text('Adicionando item'),
+              title: title,
               centerTitle: true,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios, size: 20), 
+                onPressed: () { Navigator.pop(context); }
+              )
             ),
             body: Form(
               key: _formKey,
@@ -143,13 +226,15 @@ class _ItemsList extends State<ItemsList> {
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 20.0),
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        textStyle: TextStyle(fontSize: 16.0),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 10.0, horizontal: 20.0)
+                      ),
                       child: Text('Finalizar'),
                       onPressed: () {
                         if (_formKey.currentState.validate()) {
-                          setState(() {
-                            _listItems.add([titleController.text, 
-                              descriptionController.text]);
-                          });
+                          setState(action);
                           Navigator.pop(context);
                         }
                       }
@@ -162,5 +247,15 @@ class _ItemsList extends State<ItemsList> {
         }
       )
     );
+  }
+
+  void _removeSelectedItems() {
+    setState(() {
+      _selectedIndex.sort();
+      for (int index = _selectedIndex.length - 1; index >= 0; index--) {
+        _listItems.removeAt(_selectedIndex[index]);
+      }
+      _selectedIndex.clear();
+    });
   }
 }
